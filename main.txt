@@ -1,1 +1,971 @@
+// Script by EmEkeruSmx
 
+///////////////
+// Cosmetics //
+///////////////
+
+// import Cosmetics/Bear
+import Cosmetics/CozyCave
+// import Cosmetics/Knight
+// import Cosmetics/LegsTurkeyPet
+// import Cosmetics/PetBoo
+// import Cosmetics/PetCrab
+// import Cosmetics/PetCranius 
+// import Cosmetics/PetDog
+// import Cosmetics/PetFly
+// import Cosmetics/PetFrog
+// import Cosmetics/PetPanda
+// import Cosmetics/PetSkully
+import Cosmetics/PetSnail
+import Cosmetics/WavyScarf
+
+// import Cosmetics/Hats/ChefHat 
+// import Cosmetics/Hats/Headphones
+// import Cosmetics/Hats/StarCloak
+import Cosmetics/Hats/Skully
+// import Cosmetics/Hats/DiscoVisor
+import Cosmetics/Hats/SantaHat
+
+import Cosmetics/Foes/PallasCrown
+
+///////////
+// Games //
+///////////
+
+// import Fishing
+
+// import Games/Blackjack    
+// import Games/BurgerRush
+// import Games/DigitsPuzzle   
+// import Games/FrogJump
+// import Games/StoneBoxMan    
+// import Games/Stonemon
+
+/* 
+  Remember previous weapons to check for
+  weapon changes.
+*/
+var prevR = item.right
+var prevL = item.left
+
+//////////////////////
+// Automation Flags //
+//////////////////////
+
+var autoHarv = 0
+var autoQuit = 1
+
+//////////////////////
+// Global Variables //
+//////////////////////
+
+// Manually store final boss name at each loc
+var finalBoss = none
+
+// Buffer for quitting allowing exp and chest
+var quitAfter = 100
+// Flag to start quitting counter
+var quitting = 0
+
+var foeWeak = none
+
+/*
+  Weapon activation frames and cd frames
+  format: weapXX / weapXXCd
+  XX = speed lvl (10 if max * + enchant)
+*/
+var rsword26 = 4
+var rsword26Cd = 1
+var rsword10 = 9
+var rsword10Cd = 3
+var wand20 = 8
+var wand20Cd = 2
+var wand10 = 11
+var wand10Cd = 5
+var rhcross10 = 16
+var rhcross10Cd = 5
+var rham10 = 12
+var rham10Cd = 5
+var reap10 = 1
+var reap10Cd = 1
+var rstaff20 = 7
+var rstaff20Cd = 0
+var hham10 = 12
+var hham10Cd = 0
+var blade10 = 30
+var blade10Cd = 0
+var skel20 = 7
+var skel20Cd = 0
+
+// Keep track of previous foe state
+var prevState = -1
+var currState = -1
+var prevStateTime = -1
+var currStateTime = -1
+var prevFoe = none
+var currFoe = none
+
+// Counters
+var strikes = 0
+var weapCount = 0
+var quitCount = 0
+var regularAtks = 0
+
+?loc.loop
+  strikes = 0
+  weapCount = 0
+  quitCount = 0
+  regularAtks = 0
+  quitting = 0
+  prevFoe = none
+  currFoe = none
+
+////////////////////////////
+// Loc specific variables //
+////////////////////////////
+
+var vsTomb = 0
+?foe = tid_crypt_enemy_10
+  vsTomb = 1
+
+/////////
+// HUD //
+/////////
+
+?loc.stars >= 13
+  import UI/BetterInfo2
+  disable hud fru
+:
+  disable hud ru
+
+var foeName = ＂No target found＂
+var foeType = ＂X＂
+var foeState = -1
+var foeDist = -1
+
+?loc ! tid & ai.enabled
+  >`33,2,Time: @totaltime@ / @loc.averageTime@
+
+  ?foe
+    foeName = foe.name
+    foeState = foe.state
+    foeDist = foe.distance
+
+    ?foe = poison
+      foeType = ＂#00ff00,∞＂
+    :?foe = vigor
+      foeType = ＂#ff0000,♥＂
+    :?foe = aether
+      foeType = ＂#bd33a4,*＂
+    :?foe = fire
+      foeType = ＂#FFA500,φ＂
+    :?foe = ice
+      foeType = ＂#00FFFF,❄＂
+    :?foe = air
+      foeType = ＂@＂
+  :
+    foeName = ＂No target found＂
+    foeType = ＂X＂
+    foeState = -1
+    foeDist = -1
+
+  >`2,6,@foeName@
+  >`0,6,@foeType@
+  >`0,7,State: @foeState@:@foe.time@
+  >`0,8,Prev State: @prevState@:
+  ^@prevStateTime@
+  >`0,9,Distance: @foeDist@
+  >`0,10,Reg Atks: @regularAtks@
+  >`0,23,Buffs: @buffs.string@
+  >`0,24,Debuffs: @debuffs.string@
+
+///////////////
+// Cooldowns //
+///////////////
+
+var fTalCd
+fTalCd = item.GetCooldown(＂fire_talisman＂)
+
+var barCd
+barCd = item.GetCooldown(＂bardiche＂)
+
+var hamCd
+hamCd = item.GetCooldown(＂hammer＂)
+
+var skeCd
+skeCd = item.GetCooldown(＂skeleton_arm＂)
+
+var maskCd
+maskCd = item.GetCooldown(＂mask＂)
+
+var cindCd
+cindCd = item.GetCooldown(＂cinderwisp＂)
+
+var godCd
+godCd = item.GetCooldown(＂blade＂)
+
+var mindCd
+mindCd = item.GetCooldown(＂mind＂)
+
+var dashCd
+dashCd = item.GetCooldown(＂dash＂)
+
+var bashCd
+bashCd = item.GetCooldown(＂bash＂)
+
+var staffCd
+staffCd = item.GetCooldown(＂quarterstaff＂)
+
+// Print cooldowns
+var barCol
+var hamCol
+var skeCol
+var maskCol
+var cindCol
+var godCol
+var mindCol
+var dashCol
+var bashCol
+var staffCol
+
+?barCd > 0
+  barCol = #aaaaaa
+:
+  barCol = #rainFF
+
+?hamCd > 0
+  hamCol = #aaaaaa
+:
+  hamCol = #rainFF
+
+?skeCd > 0
+  skeCol = #aaaaaa
+:
+  skeCol = #rainFF
+
+?maskCd > 0
+  maskCol = #aaaaaa
+:
+  maskCol = #rainFF
+
+?cindCd > 0
+  cindCol = #aaaaaa
+:
+  cindCol = #rainFF
+
+?godCd > 0
+  godCol = #aaaaaa
+:
+  godCol = #rainFF
+
+?mindCd > 0
+  mindCol = #aaaaaa
+:
+  mindCol = #rainFF
+
+?dashCd > 0
+  dashCol = #aaaaaa
+:
+  dashCol = #rainFF
+
+?bashCd > 0
+  bashCol = #aaaaaa
+:
+  bashCol = #rainFF
+
+?staffCd > 0
+  staffCol = #aaaaaa
+:
+  staffCol = #rainFF
+
+?ai.enabled
+  >`0,12,@barCol@,Bar cd: @barCd@
+  >`0,13,@hamCol@,Ham cd: @hamCd@
+  >`0,14,@skeCol@,Ske cd: @skeCd@
+  >`0,15,@maskCol@,Mask cd: @maskCd@
+  >`0,16,@cindCol@,Cind cd: @cindCd@
+  >`0,17,@godCol@,God cd: @godCd@
+  >`0,18,@mindCol@,Mind cd: @mindCd@
+  >`0,19,@dashCol@,Dash cd: @dashCd@
+  >`0,20,@bashCol@,Bash cd: @bashCd@
+  >`0,21,@staffCol@,Staff cd: @staffCd@
+
+/////////////
+// Summons //
+/////////////
+
+/********************************************
+ * Summon cinderwisp.                       *
+ * Returns 1 if it activates successfully.  *
+ * Returns 0 if it only equips talisman.    *
+ * Returns -1 if neither.                   *
+ ********************************************/
+func SummonFire()
+  ?totalTime > 30
+    ?summon.count < 1
+      ?fTalCd <= 0 | fTalCd > 120
+        equipL fire talisman
+        ?item.CanActivate(＂fire_talisman＂)
+          activate L
+          return 1
+        :
+          return 0
+  return -1
+
+// Same as SummonFire but removes cinderwips
+// if they exist instead.
+func BanishFire()
+  ?summon.count > 0
+    ?fTalCd <= 0 | fTalCd > 120
+      equipL fire talisman
+      ?item.CanActivate(＂fire_talisman＂)
+        activate L
+        return 1
+      :
+        return 0
+  return -1
+
+////////////////////////
+// Ability Activation //
+////////////////////////
+
+// Dodge backwards with mind stone
+func Mind()
+  ?mindCd <= 0
+    equipR shield
+    equipL mind
+    return 0
+  return 1
+
+/********************************************
+ * Stun enemies using bashing shield.       * 
+ * Returns 0 if it activates successfully.  *
+ * Returns 1 if it only equips basher.      *
+ * Returns -1 if neither.                   *
+ ********************************************/
+func Bash()
+  ?foe.distance >= 6 & foe.distance <= 23
+    ?bashCd <= 0 | bashCd > 265
+      equipR bash
+      equipL vlad
+      return 1
+    :
+      return -1
+  :?foe.distance < 6
+    return 0
+  return -1
+
+// Dash towards enemies
+var bashed = 0
+func Dash()
+  ?foe.distance >= 6 & foe.distance <= 23
+    bashed = Bash()
+    ?bashed = -1
+      ?dashCd <= 0 | dashCd > 265
+        equipR dash
+        equipL vlad
+        return 1
+      :
+        return -1
+    :?bashed = 1
+      return 1
+    :?bashed = 0
+      return 0
+  :?foe.distance < 6
+    return 0
+  return -1
+
+// Use quarterstaff dash
+func Staff()
+  ?staffCd <= 0
+    equip quarterstaff
+    ?item.CanActivate(＂quarterstaff＂)
+      activate R
+      return 0
+    return 1
+  return -1
+
+// Use mask
+func Mask()
+  ?maskCd <= 0 &
+  ^foe.hp > 0 &
+  ^foe.state > 0
+    equipR mask
+    ?item.CanActivate(＂mask＂)
+      activate R
+
+/********************************************
+ * Actvate Blade's ability.                 *
+ * n is the min number of foes to smite.    *
+ * Use n = -1 for boss battles.             *
+ ********************************************/
+func CallPallas(n)
+  ?godCd <= 0 & foe.hp > 0
+    ?n = -1
+      equip blade
+      ?item.CanActivate(＂blade＂)
+        activate R
+    :?foe.count >= n
+      ?Dash() = 0
+        equip blade
+        activate R
+
+/********************************************
+ * Actvate bardiche ability.                *
+ * Returns 1 if it activates successfully.  *
+ * Returns 0 if it only equips bardiche.    *
+ * Returns -1 if neither.                   *
+ ********************************************/
+func ActBardiche()
+  ?barCd <= 0 | barCd > 870
+    equip bardiche
+    ?foe.distance <= 10
+      activate R
+      return 1
+    :
+      return 0
+  return -1
+
+/*********************************************
+ * Actvate hammer ability.                   *
+ * Returns 1 if it activates successfully.   *
+ * Returns 0 if it only equips bardiche.     *
+ * Returns -1 if neither.                    *
+ *********************************************/
+func ActHammer()
+  ?hamCd <= 0 | hamCd >= 645
+    equip heavy hammer
+    ?foe.distance <= 7
+      activate R
+      return 1
+    :
+      return 0
+  :
+    return -1
+
+/*********************************************
+ * Actvate cinderwisp ability.               *
+ * WARNING: if on, consumes fire rune.       *
+ * n is the number of ign to activate on.    *
+ *********************************************/
+func ActCinder(n)
+  ?useIgnite ! 0
+    ?summon.GetId() = cinderwisp &
+    ^summon.GetVar(＂ignition＂) >= n
+      activate cinderwisp
+
+/////////////
+// Potions //
+/////////////
+
+func Berserk()
+  ?item.potion = berserk
+    equipR mask
+    activate potion
+
+func Lucky()
+  ?item.potion = luck
+    equipR mask
+    activate potion
+    
+///////////////////////
+// Defense Functions //
+///////////////////////
+
+func ShieldsUp()
+  ?foe
+    ?foe.count * 7.2 > armor + 0.1 * armor.f
+      equipR @foeWeak@ A shield
+      return 1
+  return 0
+
+//////////////////////
+// Attack Functions //
+//////////////////////
+
+// General weapon attack canceller
+func AAC(left, right, castTime, cdTime)
+  var totTime = castTime + cdTime
+  ?buffs.string = berserk
+    ?cdTime = 0
+      totTime = math.Max(1, castTime - 5)
+    :
+      totTime = math.Max(1, castTime - 5) +
+              ^ math.Max(1, cdTime - 5)
+  
+  ?weapCount >= totTime &
+  ^debuffs.string ! chill & 
+  ^debuffs.string ! movement
+    equipL sword 0*
+    equipR @foeWeak@ A shield
+    weapCount = 0
+    strikes++
+  ?right = none
+    equip @left@
+    weapCount++
+  :
+    equipL @left@
+    equipR @right@
+    weapCount++
+  return 0
+
+// Apply debuffs ranged or melee
+var debuffElem = none
+func ApplyDebuff(debuffWeap)
+  ?foe.debuffs.string ! damage &
+  ^foe ! immune_to_debuff_damage
+    debuffElem = ＂dP＂
+  :?foe.debuffs.string ! ＂chill:6＂ &
+  ^foe ! immune_to_debuff_chill
+    debuffElem = ＂dI＂
+  :?foe.debuffs.string ! dot &
+  ^foe ! immune_to_debuff_dot
+    debuffElem = ＂dF＂
+  :
+    debuffElem = none
+  
+  ?debuffElem = none
+    return -1
+
+  ?debuffWeap = sword
+    return AAC(debuffElem+＂ sword＂,
+              ^mask,rsword10,rsword10Cd)
+  :?@debuffWeap@ = wand
+    return AAC(debuffElem+＂ wand＂,
+              ^mask,wand10,wand10Cd)
+  
+  return -1
+
+// Attack with foe's weakness
+func attackWeak()
+  ?foe = vigor
+    AAC(D poison sword,dP sword,
+       ^rsword10,rsword10Cd)
+  :?foe = poison
+    AAC(D ice sword,dI sword,
+       ^rsword10,rsword10Cd)
+  :?foe = ice
+    AAC(D fire sword,dF sword,
+       ^rsword10,rsword10Cd)
+  :?foe = fire
+    AAC(aether sword gold,
+       ^＂aether sword -gold＂,
+       ^rsword10,rsword10Cd)
+  :?foe = aether
+    AAC(vlad,dL sword,rsword26,rsword26Cd)
+  :
+    AAC(blade,none,blade10,blade10Cd)
+  
+// Ranged attack with foe's weakness
+func attackWeakRanged()
+  ?foe = vigor
+    AAC(dP wand,compound shield,
+       ^wand10,wand10Cd)
+  :?foe = poison
+    AAC(D ice wand,dI wand,
+       ^wand10,wand10Cd)
+  :?foe = ice
+    AAC(dF wand,compound shield,
+       ^wand10,wand10Cd)
+  :?foe = fire
+    AAC(aether heavy crossbow,compound shield,
+       ^rhcross10,rhcross10Cd)
+  :?foe = aether
+    AAC(dL wand,compound shield,
+       ^wand20,wand20Cd)
+  :
+    AAC(blade,none,blade10,blade10Cd)
+
+///////////////////////
+// General Functions //
+///////////////////////
+
+// Prioritize speed for low-level farming
+func Speed()
+  //?ShieldsUp() = 0
+    ?Staff() ! 1
+      ?Dash() = 0
+        ?foe.distance >= 20 & 
+        ^buffs.string = smite
+          equipL ouroboros
+          equipR ai shield
+        :?foe ! immune_to_physical
+          AAC(skeleton arm,none,
+              ^skel20,skel20Cd)
+        :
+          AAC(dL wand, dP wand,
+              ^wand10, wand10Cd)
+      CallPallas(7)
+    
+
+// Quitting function with timer
+func Quit(n)
+  ?autoQuit ! 0
+    ?quitCount >= n
+      loc.Leave()
+    :
+      quitCount++
+
+///////////////
+// Main Loop //
+///////////////
+
+// Set foe weaknes
+?foe = vigor
+  foeWeak = poison
+:?foe = poison
+  foeWeak = ice
+:?foe = ice
+  foeWeak = fire
+:?foe = fire
+  foeWeak = aether
+:?foe = aether
+  foeWeak = vigor
+
+// Boss ability procs
+?foe = boss
+  ActCinder(15)
+
+// Walking
+?foe.count <= 0 | foe.distance > 25
+  strikes = 0
+  equipR compound shield
+  ?hp = maxhp
+    ?Staff() = -1
+      equipL experience
+  :
+    equipL ouroboros
+
+//////////////////////
+// 1. Rocky Plateau //
+//////////////////////
+
+:?loc = Rocky
+  finalBoss = dysangelos_perfected
+  quitAfter = 287
+  ?ai.enabled
+    ?foe = dysangelos_elementalist
+      ?BanishFire() = -1
+        ?Dash() = 0
+          attackWeak()
+    :?SummonFire() = -1
+      ?Dash() = 0
+        ?foe = acronian_scout
+          ?ApplyDebuff(sword) = -1
+            ?hp < maxhp
+              AAC(vlad,dL sword,
+                 ^rsword26,rsword26Cd)
+            :
+              AAC(blade,none,
+                 ^blade10,blade10Cd)
+        :?foe = dysangelos_perfected
+          ?regularAtks > 3
+            regularAtks = 0
+            
+          Berserk()
+          
+          ?ApplyDebuff(sword) = -1
+            ?hp < maxhp
+              AAC(vlad,dL sword,
+                 ^rsword26,rsword26Cd)
+            :
+              AAC(blade,none,
+                 ^blade10,blade10Cd)
+
+          ?(regularAtks = 2 & foe.state = 32 &
+          ^foe.time = 60) |
+          ^(foe.state = 115 & foe.time = 45)
+            Mind()
+          :?(regularAtks = 3 & 
+           ^currState = 33) |
+           ^(foe.state = 115)
+            regularAtks = 0
+        :
+          ?ApplyDebuff(sword) = -1
+            ?hp < maxhp
+              AAC(vlad,dL sword,
+                 ^rsword26,rsword26Cd)
+            :
+              attackWeak()
+    
+    ?foe.hp <= 105
+      CallPallas(-1)
+
+  ?currState = 32 & foe.state = 33
+    regularAtks++
+    
+//////////////////////
+// 5. Haunted Halls //
+//////////////////////
+
+:?loc = Halls
+  finalBoss = legless
+
+  ?ai.enabled
+    ?SummonFire() = -1
+      ?vsTomb = 1
+        ?Dash() = 0
+          ?strikes >= 2
+            vsTomb = 0
+          :
+            AAC(vigor crossbow,none,
+               ^rhcross10,rhcross10Cd)
+      :?foe = big booo & strikes >= 5 &
+      ^totaltime > 2350
+        vsTomb = 1
+      :?foe = pallas
+        ?Dash() = 0
+          ?foe.state = 100 | foe.state = 1 &
+          ^(buffs.string = berserk &
+          ^buffs.string ! smite)
+            equipR mask
+            equipL ouroboros
+          :
+            ?ApplyDebuff(sword) = -1
+              ?foe.count > 2
+                AAC(skeleton arm, none,
+                   ^skel20,skel20Cd)
+              :
+                attackWeak()
+
+            ?loc.stars < 13
+              ?foe.distance <= 5
+                Berserk()
+            :?foe = legless
+              Berserk()
+      :?loc.stars <= 15
+        Speed()
+      :
+        AAC(dL wand,dP wand,wand10,wand10Cd)
+  CallPallas(10)
+
+/////////////////////
+// 6. Boiling Mine //
+/////////////////////
+
+:?loc = mine
+  finalBoss = Guardian
+  ?ai.enabled
+    ?SummonFire() = -1
+      ?foe = boss
+        ?foe = explode
+          ?Dash() = 0 & foe.distance <= 5
+            Mind()
+        :?foe.state = 32
+          ?foe.time < 200
+            AAC(aether crossbow,none,
+               ^rhcross10,rhcross10Cd)
+            ?foe.time = 30
+              Mind()
+          :
+            AAC(aether crossbow,none,
+               ^rhcross10,rhcross10Cd)
+        :?foe.state = 33
+          ?Dash() = 0
+            ?foe.distance <= 5
+              Berserk()
+
+            ?foe.armor > 0
+              ?ActHammer() = -1
+                AAC(＂aether hammer +10＂,
+                   ^＂aether hammer +11＂,
+                   ^rham10,rham10Cd)
+            :
+              ?hp < maxhp
+                AAC(vlad,dL sword,
+                   ^rsword26,rsword26Cd)
+              :
+                attackWeak()
+        :
+          ?loc.stars < 13
+            Berserk()
+          AAC(aether crossbow,none,
+             ^rhcross10,rhcross10Cd)
+          CallPallas(-1)
+      :?loc.stars <= 10
+        Speed()
+      :?foe.armor > 0
+        ?Dash() = 0
+          AAC(heavy hammer,none,
+             ^hham10,hham10Cd)
+      :?hp < maxhp &
+      ^foe.count < 5
+        ?Dash() = 0
+          AAC(vlad,dL sword,
+             ^rsword26,rsword26Cd)
+      :?foe = magic_resist &
+      ^foe.distance <= 22
+        AAC(repeating crossbow,none,
+           ^reap10,reap10Cd)
+/*
+        AAC(aether crossbow,none,
+           ^rhcross10,rhcross10Cd)
+*/
+      :
+        AAC(dL wand,ai shield,wand20,wand20Cd)
+  CallPallas(10)
+
+//////////////////
+// 7. Icy Ridge //
+//////////////////
+
+:?loc = icy
+  finalBoss = ＂hrímnir＂
+  ?ai.enabled
+    ?SummonFire() = -1
+      ?foe = boss
+        ?foe.state = 0
+          ?ApplyDebuff(wand) = -1
+            ?hp < maxhp
+              AAC(vlad,dL sword,
+                 ^rsword26,rsword26Cd)
+            :
+              AAC(dF sword,compound shield,
+                 ^rsword10,rsword10Cd)
+        :?foe = ＂hrímnir＂
+          ?Dash() = 0
+            ?ApplyDebuff(sword) = -1
+              ?hp < maxhp
+                AAC(vlad,dL sword,
+                  ^rsword26,rsword26Cd)
+              :
+                attackWeak()
+            ?foe.state = 32
+              Mask()
+              ?debuffs.count <= 0 
+                Berserk()
+          CallPallas(-1)
+        :
+          ?Dash() = 0
+            ?hp < maxhp
+              AAC(vlad,dL sword,
+                ^rsword26,rsword26Cd)
+            :
+              attackWeak()
+      :?foe = wall
+        ?Dash() = 0
+          AAC(blade,none,blade10,blade10Cd)
+      :
+        AAC(dF wand, dL wand,
+           ^wand10,wand10Cd)
+  :
+    equipL ouroboros
+    equipR compound shield
+
+  CallPallas(10)
+
+///////////////
+// 8. Temple //
+///////////////
+
+:?loc = temple
+  finalBoss = Nagaraja
+  ?ai.enabled
+    ?SummonFire() = -1
+      ?foe = boss
+        ?foe = nagaraja
+          ?foe.state = 112
+            AAC(repeating crossbow, none,
+              ^reap10, reap10Cd)
+            ?foe.time = 44
+              Mind()
+          :?Dash() = 0
+            ?ApplyDebuff(sword) = -1
+              ?hp < maxhp
+                AAC(vlad, dL sword,
+                  ^rsword26,rsword26Cd)
+              :
+                attackWeak()
+
+            CallPallas(-1)
+            Berserk()
+        :
+          ?Dash() = 0
+            ?ApplyDebuff(sword) = -1
+              attackWeak()
+
+      :?foe = magic_resist
+        ?Dash() = 0
+          AAC(skeleton arm,none,
+             ^skel20, skel20Cd)
+      :?foe.armor > 0
+        ?Dash() = 0
+          AAC(heavy hammer,none,
+             ^hham10,hham10Cd)
+      :
+        AAC(dL wand,dI wand,
+           ^wand10,wand10Cd)
+  :
+    equipR compound shield
+    equipL ouroboros
+
+  CallPallas(10)
+
+/////////////
+// POTIONS //
+/////////////
+
+?hp < 10
+  ?item.potion = healing
+    activate potion
+
+?debuffs.count > 9
+  ?item.potion = cleansing
+    activate potion
+
+//////////////////////////////////////////////
+
+// Fast pickup
+?pickup.distance < 10
+  equipL star
+
+// Fast harvest
+?autoHarv > 0
+  ?harvest.distance < 7
+    ?harvest = boulder
+      equip shovel
+    :?harvest = tree
+      equipL ouro
+      equipR hatchet
+      ?item.CanActivate(＂hatchet＂)
+        activate R
+
+?prevR ! item.right | prevL ! item.left
+  weapCount = 0
+  strikes = 0
+  prevR = item.right
+  prevL = item.left
+
+?foe = boss
+  ?foe.state ! currState
+    prevState = currState
+    prevStateTime = currStateTime
+    currState = foe.state
+  currStateTime = foe.time
+
+?foe ! currFoe
+  regularAtks = 0
+  prevFoe = currFoe
+  currFoe = foe
+
+?foe = finalBoss & foe.hp <= 0 &
+  ^loc.averageTime > 0
+  ?hp < maxhp * 0.9 | 
+  ^totaltime + quitAfter > loc.averageTime
+    quitting = 1
+
+?quitting > 0
+  Quit(quitAfter)
+  
+/*
+
+ |\_/|
+ (•,•)
+  `＂´
+   
+   _
+.´ìôí
+  /|\
+  / \
+
+*/
