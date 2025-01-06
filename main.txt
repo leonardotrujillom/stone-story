@@ -5,7 +5,7 @@
 ///////////////
 
 // import Cosmetics/Bear
-import Cosmetics/CozyCave
+// import CozyCave
 // import Cosmetics/Knight
 // import Cosmetics/LegsTurkeyPet
 // import Cosmetics/PetBoo
@@ -16,17 +16,19 @@ import Cosmetics/CozyCave
 // import Cosmetics/PetFrog
 // import Cosmetics/PetPanda
 // import Cosmetics/PetSkully
-import Cosmetics/PetSnail
-import Cosmetics/WavyScarf
+// import Cosmetics/PetSnail
+// import Cosmetics/PetSnowBunny
+// import Cosmetics/PetSnowman
+// import Cosmetics/WavyScarf
 
 // import Cosmetics/Hats/ChefHat 
 // import Cosmetics/Hats/Headphones
 // import Cosmetics/Hats/StarCloak
-import Cosmetics/Hats/Skully
+// import Cosmetics/Hats/Skully
 // import Cosmetics/Hats/DiscoVisor
-import Cosmetics/Hats/SantaHat
+// import Cosmetics/Hats/SantaHat
 
-import Cosmetics/Foes/PallasCrown
+// import Cosmetics/Foes/PallasCrown
 
 ///////////
 // Games //
@@ -325,6 +327,37 @@ func BanishFire()
         return 0
   return -1
 
+/********************************************
+ * Summon voidweaver.                       *
+ * Returns 1 if it activates successfully.  *
+ * Returns 0 if it only equips talisman.    *
+ * Returns -1 if neither.                   *
+ ********************************************/
+func SummonGhost()
+  ?totalTime > 30
+    ?summon.count < 1
+      ?fTalCd <= 0 | fTalCd > 120
+        equipL aether talisman
+        ?item.CanActivate(＂aether_talisman＂)
+          activate L
+          return 1
+        :
+          return 0
+  return -1
+
+// Same as SummonGhost but removes voidweaver
+// if they exist instead.
+func BanishGhost()
+  ?summon.count > 0
+    ?fTalCd <= 0 | fTalCd > 120
+      equipL aether talisman
+      ?item.CanActivate(＂aether_talisman＂)
+        activate L
+        return 1
+      :
+        return 0
+  return -1
+
 ////////////////////////
 // Ability Activation //
 ////////////////////////
@@ -453,6 +486,17 @@ func ActCinder(n)
     ?summon.GetId() = cinderwisp &
     ^summon.GetVar(＂ignition＂) >= n
       activate cinderwisp
+
+/*********************************************
+ * Actvate voidweaver ability.               *
+ * WARNING: if on, consumes aether rune.     *
+ * n is the max armor to try to activate.    *
+ *********************************************/
+func ActVoidweaver(n)
+  ?useDevour ! 0
+    ?summon.GetId() = voidweaver &
+    ^armor <= n
+      activate voidweaver
 
 /////////////
 // Potions //
@@ -702,7 +746,8 @@ func Quit(n)
   finalBoss = legless
 
   ?ai.enabled
-    ?SummonFire() = -1
+    // ?SummonFire() = -1
+    ?SummonGhost() = -1
       ?vsTomb = 1
         ?Dash() = 0
           ?strikes >= 2
@@ -746,7 +791,8 @@ func Quit(n)
 :?loc = mine
   finalBoss = Guardian
   ?ai.enabled
-    ?SummonFire() = -1
+    // ?SummonFire() = -1
+    ?SummonGhost() = -1
       ?foe = boss
         ?foe = explode
           ?Dash() = 0 & foe.distance <= 5
@@ -812,7 +858,8 @@ func Quit(n)
 :?loc = icy
   finalBoss = ＂hrímnir＂
   ?ai.enabled
-    ?SummonFire() = -1
+    // ?SummonFire() = -1
+    ?SummonGhost() = -1
       ?foe = boss
         ?foe.state = 0
           ?ApplyDebuff(wand) = -1
@@ -861,7 +908,8 @@ func Quit(n)
 :?loc = temple
   finalBoss = Nagaraja
   ?ai.enabled
-    ?SummonFire() = -1
+    // ?SummonFire() = -1
+    ?SummonGhost() = -1
       ?foe = boss
         ?foe = nagaraja
           ?foe.state = 112
